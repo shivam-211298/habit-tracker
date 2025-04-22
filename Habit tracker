@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2c3e50" />
+  <title>Habit Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1em;
+      text-align: center;
+    }
+    main {
+      padding: 1em;
+    }
+    .habit-list {
+      list-style: none;
+      padding: 0;
+    }
+    .habit-item {
+      background: white;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .habit-form input {
+      padding: 0.5em;
+      margin-right: 0.5em;
+    }
+    .habit-form button {
+      padding: 0.5em 1em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Habit Tracker</h1>
+  </header>
+  <main>
+    <form class="habit-form">
+      <input type="text" id="habitName" placeholder="New habit" required />
+      <button type="submit">Add</button>
+    </form>
+    <ul class="habit-list" id="habitList"></ul>
+  </main>
+
+  <script>
+    const habitForm = document.querySelector('.habit-form');
+    const habitList = document.getElementById('habitList');
+    const habitInput = document.getElementById('habitName');
+
+    let habits = JSON.parse(localStorage.getItem('habits')) || [];
+
+    function saveHabits() {
+      localStorage.setItem('habits', JSON.stringify(habits));
+    }
+
+    function renderHabits() {
+      habitList.innerHTML = '';
+      habits.forEach((habit, index) => {
+        const li = document.createElement('li');
+        li.className = 'habit-item';
+        li.innerHTML = `
+          <span>${habit.name}</span>
+          <button onclick="removeHabit(${index})">Delete</button>
+        `;
+        habitList.appendChild(li);
+      });
+    }
+
+    function removeHabit(index) {
+      habits.splice(index, 1);
+      saveHabits();
+      renderHabits();
+    }
+
+    habitForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = habitInput.value.trim();
+      if (name) {
+        habits.push({ name });
+        habitInput.value = '';
+        saveHabits();
+        renderHabits();
+      }
+    });
+
+    renderHabits();
+  </script>
+</body>
+</html>
