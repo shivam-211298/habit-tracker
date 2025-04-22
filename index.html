@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2c3e50" />
+  <title>Habit Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1em;
+      text-align: center;
+    }
+    main {
+      padding: 1em;
+    }
+    .habit-list {
+      list-style: none;
+      padding: 0;
+    }
+    .habit-item {
+      background: white;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
+    .habit-item span {
+      display: block;
+      font-weight: bold;
+    }
+    .habit-buttons {
+      margin-top: 0.5em;
+    }
+    .habit-buttons button {
+      margin-right: 0.5em;
+      padding: 0.4em 0.8em;
+    }
+    .habit-form input, .habit-form select {
+      padding: 0.5em;
+      margin-right: 0.5em;
+      width: 100%;
+      margin-bottom: 0.5em;
+    }
+    .habit-form button {
+      padding: 0.5em 1em;
+    }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 1em;
+      border-radius: 8px;
+      text-align: center;
+      width: 300px;
+      box-sizing: border-box; /* Ensure padding is included in width */
+    }
+    .modal-content input, .modal-content select {
+      padding: 0.5em;
+      margin: 0.5em 0;
+      width: calc(100% - 1em); /* Adjust width to fit within the modal */
+      box-sizing: border-box; /* Include padding in width calculation */
+    }
+    .modal-content label {
+      display: block;
+      margin: 0.5em 0;
+      text-align: left; /* Optional: Align labels to the left */
+    }
+    .day-checkboxes {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* Two columns of equal width */
+      gap: 0.5em; /* Add spacing between rows and columns */
+      margin-bottom: 1em;
+    }
+    .day-checkboxes label {
+      display: flex;
+      flex-direction: row-reverse;
+      align-items: center; /* Vertically center the checkbox and text */
+      gap: 0.5em; /* Add spacing between the label text and the checkbox */
+    }
+    .day-checkboxes input {
+      margin: 0; /* Remove any default margins */
+    }
+    .habit-content {
+      flex: 1;
+      cursor: pointer;
+    }
+    .done-button {
+      margin-left: auto; /* Push the button to the right */
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 0.4em 0.8em;
+      cursor: pointer;
+    }
+    .done-button:hover {
+      background-color: #218838;
+    }
+    #calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr); /* 7 columns for 7 days of the week */
+      gap: 5px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .calendar-header {
+      display: contents; /* Ensure the header aligns with the calendar grid */
+    }
+
+    .calendar-day-header {
+      padding: 10px;
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .calendar-day {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    .calendar-day.empty {
+      background-color: transparent;
+      border: none;
+    }
+
+    .calendar-day.completed {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .calendar-day.missed {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .calendar-day:hover {
+      cursor: pointer;
+      background-color: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Habit Tracker</h1>
+    <div id="timeContainer" style="position: absolute; top: 10px; right: 10px; font-size: 14px; color: white;"></div>
+  </header>
+  <main>
+    <input type="text" id="usernameInput" placeholder="Enter GitHub username" />
+    <button id="fetchUserButton">Fetch Repositories</button>
+    <div id="app"></div>
+    <button id="addHabitBtn">Add New Habit</button>
+    <button id="toggleMonthlyViewBtn">Monthly View</button>
+    <ul class="habit-list" id="habitList"></ul>
+    <div id="monthlyView" style="display: none;">
+      <h2>Monthly View</h2>
+      <label for="habitSelector">Select Habit:</label>
+      <select id="habitSelector"></select>
+      <h3 id="monthName"></h3> <!-- Add this line -->
+      <div id="calendar"></div>
+    </div>
+  </main>
+
+  <div class="modal" id="habitModal">
+    <div class="modal-content">
+      <h3>Create New Habit</h3>
+      <form class="habit-form">
+        <label for="habitName">Habit Name:</label>
+        <input type="text" id="habitName" required />
+        
+        <label for="habitDescription">Description:</label>
+        <input type="text" id="habitDescription" required />
+        
+        <label for="habitReminderTime">Reminder Time:</label>
+        <input type="time" id="habitReminderTime" required />
+        
+        <label>Select Days to Remind:</label>
+        <div class="day-checkboxes">
+          <label><input type="checkbox" id="daily" /> Daily</label>
+          <label><input type="checkbox" id="monday" /> Monday</label>
+          <label><input type="checkbox" id="tuesday" /> Tuesday</label>
+          <label><input type="checkbox" id="wednesday" /> Wednesday</label>
+          <label><input type="checkbox" id="thursday" /> Thursday</label>
+          <label><input type="checkbox" id="friday" /> Friday</label>
+          <label><input type="checkbox" id="saturday" /> Saturday</label>
+          <label><input type="checkbox" id="sunday" /> Sunday</label>
+        </div>
+
+        <button type="submit">Save Habit</button>
+        <button type="button" id="cancelHabitBtn">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const addHabitBtn = document.getElementById('addHabitBtn');
+    const habitModal = document.getElementById('habitModal');
+    const cancelHabitBtn = document.getElementById('cancelHabitBtn');
+    const habitForm = document.querySelector('.habit-form');
+    const habitName = document.getElementById('habitName');
+    const habitDescription = document.getElementById('habitDescription');
+    const habitReminderTime = document.getElementById('habitReminderTime');
+    const daysCheckboxes = {
+      daily: document.getElementById('daily'),
+      monday: document.getElementById('monday'),
+      tuesday: document.getElementById('tuesday'),
+      wednesday: document.getElementById('wednesday'),
+      thursday: document.getElementById('thursday'),
+      friday: document.getElementById('friday'),
+      saturday: document.getElementById('saturday'),
+      sunday: document.getElementById('sunday'),
+    };
+
+    let editingHabitIndex = null; // Tracks the index of the habit being edited
+
+    // Set "Daily" as selected by default and select all other days
+    daysCheckboxes.daily.checked = true;
+    Object.keys(daysCheckboxes).forEach(day => {
+      if (day !== 'daily') {
+        daysCheckboxes[day].checked = true;
+        daysCheckboxes[day].disabled = true; // Disable individual days initially
+      }
+    });
+
+    // Add event listener for "Daily" checkbox
+    daysCheckboxes.daily.addEventListener('change', () => {
+      const isDailyChecked = daysCheckboxes.daily.checked;
+      Object.keys(daysCheckboxes).forEach(day => {
+        if (day !== 'daily') {
+          daysCheckboxes[day].checked = isDailyChecked;
+          daysCheckboxes[day].disabled = isDailyChecked; // Disable individual days if "Daily" is selected
+        }
+      });
+    });
+
+    // Enable individual day selection if "Daily" is unchecked
+    Object.keys(daysCheckboxes).forEach(day => {
+      if (day !== 'daily') {
+        daysCheckboxes[day].addEventListener('change', () => {
+          const allDaysChecked = Object.keys(daysCheckboxes)
+            .filter(day => day !== 'daily')
+            .every(day => daysCheckboxes[day].checked);
+
+          if (allDaysChecked) {
+            daysCheckboxes.daily.checked = true; // Automatically check "Daily" if all individual days are selected
+            Object.keys(daysCheckboxes).forEach(day => {
+              if (day !== 'daily') {
+                daysCheckboxes[day].disabled = true; // Disable individual days
+              }
+            });
+          } else {
+            daysCheckboxes.daily.checked = false; // Uncheck "Daily" if not all individual days are selected
+            daysCheckboxes.daily.disabled = false;
+          }
+        });
+      }
+    });
+
+    let habits = JSON.parse(localStorage.getItem('habits')) || [];
+
+    // Request notification permission
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    function saveHabits() {
+      localStorage.setItem('habits', JSON.stringify(habits));
+      console.log('Saved to localStorage:', localStorage.getItem('habits')); // Debugging line
+    }
+
+    function scheduleReminder(habitIndex) {
+      const habit = habits[habitIndex];
+      const reminderTime = habit.reminderTime;
+      const days = habit.reminderDays;
+      const [hours, minutes] = reminderTime.split(':').map(Number);
+
+      const now = new Date();
+      const currentDay = now.getDay(); // 0-6 (Sunday-Saturday)
+      if (days.includes(currentDay)) {
+        const reminderDate = new Date(now.setHours(hours, minutes, 0, 0));
+
+        // Schedule notification
+        const timeDifference = reminderDate.getTime() - Date.now();
+        if (timeDifference > 0) {
+          setTimeout(() => {
+            if (Notification.permission === "granted") {
+              new Notification(`${habit.name} Reminder`, {
+                body: `Time to log your habit: ${habit.name}`,
+              });
+            }
+          }, timeDifference);
+        }
+      }
+    }
+
+    function renderHabits() {
+      const habitList = document.getElementById('habitList');
+      habitList.innerHTML = ''; // Clear the list before rendering
+      console.log('Rendering habits:', habits); // Debugging line
+
+      const dayMap = {
+        0: 'Sun',
+        1: 'Mon',
+        2: 'Tue',
+        3: 'Wed',
+        4: 'Thu',
+        5: 'Fri',
+        6: 'Sat',
+      };
+
+      habits.forEach((habit, index) => {
+        const li = document.createElement('li');
+        li.className = 'habit-item';
+
+        li.innerHTML = `
+          <div class="habit-content" onclick="openEditForm(${index})">
+            <span>${habit.name}</span><br>
+            <small>${habit.description}</small><br>
+            <small>Reminder Time: ${habit.reminderTime}</small><br>
+            <small>Days: ${
+              habit.reminderDays.includes('daily')
+                ? 'Daily'
+                : habit.reminderDays.map(day => dayMap[day] || day).join(', ')
+            }</small><br>
+            <small>Streak: ${habit.streak} days</small>
+          </div>
+          <button class="done-button" onclick="markHabitDone(${index})">Done</button>
+        `;
+        habitList.appendChild(li);
+      });
+    }
+
+    addHabitBtn.addEventListener('click', () => {
+      editingHabitIndex = null; // Reset the editing index
+      habitForm.reset(); // Clear the form
+      habitModal.style.display = 'flex';
+    });
+
+    cancelHabitBtn.addEventListener('click', () => {
+      habitModal.style.display = 'none';
+    });
+
+    habitForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const name = habitName.value.trim();
+      const description = habitDescription.value.trim();
+      const reminderTime = habitReminderTime.value.trim();
+
+      // Ensure reminderDays is always an array
+      const reminderDays = Object.keys(daysCheckboxes)
+        .filter(day => daysCheckboxes[day].checked)
+        .map(day => {
+          const dayMap = {
+            daily: 'daily', monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0
+          };
+          return dayMap[day];
+        });
+
+      if (name && description && reminderTime && reminderDays.length > 0) {
+        if (editingHabitIndex !== null) {
+          // Update the existing habit
+          const habit = habits[editingHabitIndex];
+          habit.name = name;
+          habit.description = description;
+          habit.reminderTime = reminderTime;
+          habit.reminderDays = reminderDays;
+
+          editingHabitIndex = null; // Reset the editing index
+        } else {
+          // Add a new habit
+          habits.push({
+            name,
+            description,
+            reminderTime,
+            reminderDays,
+            streak: 0,
+            creationDate: new Date().toISOString() // Add creation date
+          });
+        }
+
+        saveHabits();
+        habitModal.style.display = 'none';
+        renderHabits();
+      } else {
+        alert('Please fill all fields and select at least one day for the reminder.');
+      }
+    });
+
+    function removeHabit(index) {
+      const habit = habits[index];
+      const confirmation = confirm(`Are you sure you want to delete the habit "${habit.name}"?`);
+      if (confirmation) {
+        habits.splice(index, 1); // Remove the habit from the array
+        saveHabits(); // Save the updated habits to localStorage
+        renderHabits(); // Re-render the habit list
+      }
+    }
+
+    function markHabitDone(index) {
+      const habit = habits[index];
+      const now = new Date();
+      const today = now.getDay(); // Get the current day (0-6)
+      const dateKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`; // Format: YYYY-MM-DD
+
+      // Check if the habit is already marked as done for today
+      if (habit.completedDates && habit.completedDates.includes(dateKey)) {
+        alert(`"${habit.name}" is already marked as done for today.`);
+        return; // Exit the function
+      }
+
+      // Check if the habit is set to "Daily" or includes the current day
+      if (habit.reminderDays.includes('daily') || habit.reminderDays.includes(today)) {
+        habit.streak = (habit.streak || 0) + 1; // Ifncrement the streak
+
+        // Add today's date to completedDates
+        if (!habit.completedDates) {
+          habit.completedDates = [];
+        }
+        habit.completedDates.push(dateKey);
+
+        saveHabits();
+        renderHabits();
+
+        // Update the monthly view if it is currently visible
+        const monthlyView = document.getElementById('monthlyView');
+        if (monthlyView.style.display === 'block') {
+          const habitSelector = document.getElementById('habitSelector');
+          const selectedHabitIndex = parseInt(habitSelector.value, 10);
+          if (selectedHabitIndex === index) {
+            generateCalendar(index); // Regenerate the calendar for the selected habit
+          }
+        }
+
+        alert(`Great job! You've completed "${habit.name}" for today.`);
+      } else {
+        alert(`"${habit.name}" is not scheduled for today.`);
+      }
+    }
+
+    function openEditForm(index) {
+      const habit = habits[index];
+      editingHabitIndex = index; // Set the index of the habit being edited
+
+      // Populate the form with the habit's details
+      habitName.value = habit.name;
+      habitDescription.value = habit.description;
+      habitReminderTime.value = habit.reminderTime;
+
+      // Set the days checkboxes
+      Object.keys(daysCheckboxes).forEach(day => {
+        daysCheckboxes[day].checked = habit.reminderDays.includes(day === 'daily' ? 'daily' : parseInt(day));
+        daysCheckboxes[day].disabled = habit.reminderDays.includes('daily');
+      });
+
+      // Show the modal
+      habitModal.style.display = 'flex';
+
+      // Add a delete button to the form
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.textContent = 'Delete Habit';
+      deleteButton.className = 'delete-button';
+      deleteButton.onclick = () => {
+        removeHabit(index);
+        habitModal.style.display = 'none';
+      };
+
+      // Add the delete button to the form if it doesn't already exist
+      if (!document.querySelector('.delete-button')) {
+        habitForm.appendChild(deleteButton);
+      }
+    }
+
+    renderHabits();
+
+    function updateTime() {
+      const timeContainer = document.getElementById('timeContainer');
+      const now = new Date();
+
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const day = days[now.getDay()];
+
+      const date = now.toLocaleDateString(); // Format: MM/DD/YYYY
+      const time = now.toLocaleTimeString(); // Format: HH:MM:SS AM/PM
+
+      timeContainer.textContent = `${day}, ${date} - ${time}`;
+    }
+
+    // Update time every second
+    setInterval(updateTime, 1000);
+    updateTime(); // Call immediately to show the time without delay
+
+    function generateCalendar(habitIndex) {
+      const calendar = document.getElementById('calendar');
+      const monthName = document.getElementById('monthName'); // Reference the month name container
+      calendar.innerHTML = ''; // Clear the calendar
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+
+      // Set the month name and year
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      monthName.textContent = `${monthNames[month]} ${year}`;
+
+      // Add a header row for the days of the week
+      const daysOfWeek = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+      daysOfWeek.forEach(day => {
+        const dayCell = document.createElement('div');
+        dayCell.className = 'calendar-day-header';
+        dayCell.textContent = day;
+        calendar.appendChild(dayCell);
+      });
+
+      // Get the first and last day of the month
+      const firstDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+      const lastDate = new Date(year, month + 1, 0).getDate();
+
+      // Adjust firstDay to start from Monday (0 = Monday)
+      const adjustedFirstDay = (firstDay === 0 ? 6 : firstDay - 1);
+
+      // Create empty cells for days before the first day of the month
+      for (let i = 0; i < adjustedFirstDay; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-day empty';
+        calendar.appendChild(emptyCell);
+      }
+
+      // Get the habit creation date
+      const habit = habits[habitIndex];
+      const habitCreationDate = new Date(habit.creationDate); // Ensure the habit has a `creationDate` property
+
+      // Create cells for each day of the month
+      for (let day = 1; day <= lastDate; day++) {
+        const dayCell = document.createElement('div');
+        dayCell.className = 'calendar-day';
+        dayCell.textContent = day;
+
+        const currentDate = new Date(year, month, day);
+
+        // Skip marking days before the habit creation date
+        if (currentDate < habitCreationDate) {
+          dayCell.classList.add('empty');
+        } else {
+          const dateKey = `${year}-${month + 1}-${day}`; // Format: YYYY-MM-DD
+          if (habit.completedDates && habit.completedDates.includes(dateKey)) {
+            dayCell.classList.add('completed');
+          } else {
+            dayCell.classList.add('missed');
+          }
+
+          // Add click event to toggle completion
+          dayCell.addEventListener('click', () => {
+            if (!habit.completedDates) {
+              habit.completedDates = [];
+            }
+
+            if (habit.completedDates.includes(dateKey)) {
+              // Ask for confirmation before marking the day as missed
+              const confirmation = confirm(`Are you sure you want to mark ${monthNames[month]} ${day} as missed?`);
+              if (confirmation) {
+                // Remove the date if already completed
+                habit.completedDates = habit.completedDates.filter(date => date !== dateKey);
+                dayCell.classList.remove('completed');
+                dayCell.classList.add('missed');
+              }
+            } else {
+              // Mark the date as completed
+              habit.completedDates.push(dateKey);
+              dayCell.classList.remove('missed');
+              dayCell.classList.add('completed');
+            }
+
+            saveHabits();
+          });
+        }
+
+        calendar.appendChild(dayCell);
+      }
+
+      // Fill empty cells for days after the last day of the month
+      const totalCells = adjustedFirstDay + lastDate;
+      const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (let i = 0; i < remainingCells; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'calendar-day empty';
+        calendar.appendChild(emptyCell);
+      }
+    }
+
+    function populateHabitSelector() {
+      const habitSelector = document.getElementById('habitSelector');
+      habitSelector.innerHTML = ''; // Clear the dropdown
+
+      habits.forEach((habit, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = habit.name;
+        habitSelector.appendChild(option);
+      });
+
+      // Automatically generate the calendar for the first habit
+      if (habits.length > 0) {
+        generateCalendar(0); // Default to the first habit
+      }
+    }
+
+    const habitSelector = document.getElementById('habitSelector');
+
+    habitSelector.addEventListener('change', (e) => {
+      const selectedHabitIndex = parseInt(e.target.value, 10);
+      generateCalendar(selectedHabitIndex);
+    });
+
+    const toggleMonthlyViewBtn = document.getElementById('toggleMonthlyViewBtn');
+    const habitList = document.getElementById('habitList');
+    const monthlyView = document.getElementById('monthlyView');
+
+    toggleMonthlyViewBtn.addEventListener('click', () => {
+      if (monthlyView.style.display === 'none') {
+        monthlyView.style.display = 'block';
+        habitList.style.display = 'none';
+        toggleMonthlyViewBtn.textContent = 'Task View'; // Change button text to "Task View"
+
+        if (habits.length > 0) {
+          populateHabitSelector(); // Populate the dropdown with habits
+        } else {
+          alert('No habits available to display in the monthly view.');
+        }
+      } else {
+        monthlyView.style.display = 'none';
+        habitList.style.display = 'block';
+        toggleMonthlyViewBtn.textContent = 'Monthly View'; // Change button text back to "Monthly View"
+      }
+    });
+  </script>
+</body>
+
+</html>
